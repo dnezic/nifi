@@ -151,6 +151,15 @@ public class PutHive3Streaming extends AbstractProcessor {
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
+    static final PropertyDescriptor TEST_PROP = new PropertyDescriptor.Builder()
+            .name("hive3-stream-test-prop")
+            .displayName("Prop dummy")
+            .description("The name of the database in which to put the data.")
+            .required(true)
+            .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
+            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+            .build();
+
     static final PropertyDescriptor TABLE_NAME = new PropertyDescriptor.Builder()
             .name("hive3-stream-table-name")
             .displayName("Table Name")
@@ -168,6 +177,15 @@ public class PutHive3Streaming extends AbstractProcessor {
                     + "Expression Language, for example if PartitionRecord is upstream and two partitions 'name' and 'age' are used, then this property can be set to "
                     + "${name},${age}. If this property is set, the values will be used as the partition values, and any record fields corresponding to "
                     + "partition columns will be ignored. If this property is not set, then the partition values are expected to be the last fields of each record.")
+            .required(false)
+            .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
+            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+            .build();
+
+    static final PropertyDescriptor TIMEZONE = new PropertyDescriptor.Builder()
+            .name("hive3-stream-timezone")
+            .displayName("Timezone")
+            .description("Europe/Zagreb etc.")
             .required(false)
             .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
@@ -296,6 +314,8 @@ public class PutHive3Streaming extends AbstractProcessor {
         props.add(RECORDS_PER_TXN);
         props.add(TXNS_PER_BATCH);
         props.add(CALL_TIMEOUT);
+        props.add(TIMEZONE);
+        props.add(TEST_PROP);
         props.add(DISABLE_STREAMING_OPTIMIZATIONS);
         props.add(ROLLBACK_ON_FAILURE);
         props.add(KERBEROS_CREDENTIALS_SERVICE);
@@ -418,6 +438,7 @@ public class PutHive3Streaming extends AbstractProcessor {
             final RecordReaderFactory recordReaderFactory = context.getProperty(RECORD_READER).asControllerService(RecordReaderFactory.class);
             final String dbName = context.getProperty(DB_NAME).evaluateAttributeExpressions(flowFile).getValue();
             final String tableName = context.getProperty(TABLE_NAME).evaluateAttributeExpressions(flowFile).getValue();
+            final String timeZone = context.getProperty(TIMEZONE).evaluateAttributeExpressions(flowFile).getValue();
 
             final ComponentLog log = getLogger();
             String metastoreURIs = null;
@@ -444,6 +465,7 @@ public class PutHive3Streaming extends AbstractProcessor {
             HiveOptions o = new HiveOptions(metastoreURIs, dbName, tableName)
                     .withHiveConf(hiveConfig)
                     .withCallTimeout(callTimeout)
+                    .withTimeZone(timeZone)
                     .withStreamingOptimizations(!disableStreamingOptimizations)
                     .withTransactionBatchSize(transactionsPerBatch);
 
@@ -605,7 +627,7 @@ public class PutHive3Streaming extends AbstractProcessor {
                 .withTable(options.getTableName())
                 .withStaticPartitionValues(options.getStaticPartitionValues())
                 .withHiveConf(options.getHiveConf())
-                .withRecordWriter(new HiveRecordWriter(reader, getLogger(), recordsPerTransaction))
+                .withRecordWriter(new HiveRecordWriter(reader, getLogger(), recordsPerTransaction, options.getTimeZone()))
                 .withTransactionBatchSize(options.getTransactionBatchSize())
                 .withAgentInfo("NiFi " + this.getClass().getSimpleName() + " [" + this.getIdentifier()
                         + "] thread " + Thread.currentThread().getId() + "[" + Thread.currentThread().getName() + "]")

@@ -37,11 +37,25 @@ public class HiveOptions implements Serializable {
     protected HiveConf hiveConf;
     protected boolean streamingOptimizations = true;
     protected int transactionBatchSize = 1;
+    protected String timeZone;
 
     public HiveOptions(String metaStoreURI, String databaseName, String tableName) {
         this.metaStoreURI = metaStoreURI;
         this.databaseName = databaseName;
         this.tableName = tableName;
+        this.timeZone = null;
+    }
+
+    public HiveOptions(String metaStoreURI, String databaseName, String tableName, String timeZone) {
+        this.metaStoreURI = metaStoreURI;
+        this.databaseName = databaseName;
+        this.tableName = tableName;
+        this.timeZone = timeZone;
+    }
+
+    public HiveOptions withTimeZone(String timeZone) {
+        this.timeZone = timeZone;
+        return this;
     }
 
     public HiveOptions withCallTimeout(Integer callTimeout) {
@@ -89,6 +103,10 @@ public class HiveOptions implements Serializable {
 
     public String getTableName() {
         return tableName;
+    }
+
+    public String getTimeZone() {
+        return timeZone;
     }
 
     public String getQualifiedTableName() {

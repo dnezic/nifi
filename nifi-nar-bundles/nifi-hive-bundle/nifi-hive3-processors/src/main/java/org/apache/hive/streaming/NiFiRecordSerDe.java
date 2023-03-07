@@ -63,6 +63,7 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.TimeZone;
 
 public class NiFiRecordSerDe extends AbstractSerDe {
 
@@ -74,12 +75,20 @@ public class NiFiRecordSerDe extends AbstractSerDe {
 
     protected StandardStructObjectInspector cachedObjectInspector;
     protected TimestampParser tsParser;
+    protected String timeZone;
 
     private final static Pattern INTERNAL_PATTERN = Pattern.compile("_col([0-9]+)");
 
     public NiFiRecordSerDe(RecordReader recordReader, ComponentLog log) {
         this.recordReader = recordReader;
         this.log = log;
+        this.timeZone = null;
+    }
+
+    public NiFiRecordSerDe(RecordReader recordReader, ComponentLog log, String timeZone) {
+        this.recordReader = recordReader;
+        this.log = log;
+        this.timeZone = timeZone;
     }
 
     @Override
@@ -229,6 +238,14 @@ public class NiFiRecordSerDe extends AbstractSerDe {
                     // ORC doesn't currently handle TIMESTAMPLOCALTZ
                     case TIMESTAMP:
                         Timestamp ts = DataTypeUtils.toTimestamp(fieldValue, () -> DataTypeUtils.getDateFormat(fieldDataType.getFormat()), fieldName);
+                        if(this.timeZone == null) {
+                            this.timeZone = "Europe/Zagreb";
+                        }
+                        if(this.timeZone != null) {
+                            TimeZone tz = TimeZone.getTimeZone(this.timeZone);
+                            int h = tz.getOffset(ts.getTime());
+                            ts = new Timestamp(ts.getTime() + h);
+                        }
                         // Convert to Hive's Timestamp type
                         org.apache.hadoop.hive.common.type.Timestamp hivetimestamp = new org.apache.hadoop.hive.common.type.Timestamp();
                         hivetimestamp.setTimeInMillis(ts.getTime(), ts.getNanos());

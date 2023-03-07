@@ -39,12 +39,22 @@ public class HiveRecordWriter extends AbstractRecordWriter {
     private final ComponentLog log;
     private final int recordsPerTransaction;
     private int currentRecordsWritten;
+    private String timeZone;
 
     public HiveRecordWriter(RecordReader recordReader, ComponentLog log, final int recordsPerTransaction) {
         super(null);
         this.recordReader = recordReader;
         this.log = log;
         this.recordsPerTransaction = recordsPerTransaction;
+        this.timeZone = null;
+    }
+
+    public HiveRecordWriter(RecordReader recordReader, ComponentLog log, final int recordsPerTransaction, String timeZone) {
+        super(null);
+        this.recordReader = recordReader;
+        this.log = log;
+        this.recordsPerTransaction = recordsPerTransaction;
+        this.timeZone = timeZone;
     }
 
     @Override
@@ -53,7 +63,7 @@ public class HiveRecordWriter extends AbstractRecordWriter {
             Properties tableProps = table.getMetadata();
             tableProps.setProperty(serdeConstants.LIST_COLUMNS, Joiner.on(",").join(inputColumns));
             tableProps.setProperty(serdeConstants.LIST_COLUMN_TYPES, Joiner.on(":").join(inputTypes));
-            NiFiRecordSerDe serde = new NiFiRecordSerDe(recordReader, log);
+            NiFiRecordSerDe serde = new NiFiRecordSerDe(recordReader, log, timeZone);
             SerDeUtils.initializeSerDe(serde, conf, tableProps, null);
             this.serde = serde;
             return serde;
